@@ -1,22 +1,19 @@
 # ── Common base with runtime deps ──────────────────────────────────────────
-FROM node:24-bookworm-slim AS base
+FROM node:24-slim AS base
 WORKDIR /app
 
-RUN --mount=type=cache,target=/var/cache/apt,sharing=shared \
-  --mount=type=cache,target=/var/lib/apt/lists,sharing=shared \
-  for i in 1 2 3; do apt-get update && break || sleep 5; done \
-  && apt-get install -y --no-install-recommends libsecret-1-0 ca-certificates \
+RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/99-retry \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends -o Dpkg::Use-Pty=0 libsecret-1-0 ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 # ── Builder ────────────────────────────────────────────────────────────────
 FROM base AS builder
 
 # Build tools for native module compilation
-# apt-get update needed here because base's rm -rf clears the shared cache
-RUN --mount=type=cache,target=/var/cache/apt,sharing=shared \
-  --mount=type=cache,target=/var/lib/apt/lists,sharing=shared \
-  for i in 1 2 3; do apt-get update && break || sleep 5; done \
-  && apt-get install -y --no-install-recommends python3 make g++ \
+RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/99-retry \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends -o Dpkg::Use-Pty=0 python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
