@@ -2,7 +2,7 @@ name: Publish Fork Image to GHCR
 
 on:
   push:
-    branches: [main]
+    branches: [my-changes, main]
     tags:
       - "v*"
   workflow_dispatch:
@@ -12,12 +12,11 @@ permissions:
   packages: write
 
 env:
-  IMAGE_NAME: ghcr.io/kang-heewon/omniroute
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/omniroute
 
 jobs:
   build:
     name: Build and Push Fork Image
-    if: github.repository == 'kang-heewon/OmniRoute'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -42,14 +41,15 @@ jobs:
         with:
           images: ${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref_name == 'main' || github.ref_name == 'my-changes' }}
+            type=ref,event=branch
             type=sha,prefix=sha-
             type=ref,event=tag
           labels: |
             org.opencontainers.image.title=omniroute
             org.opencontainers.image.description=Unified AI proxy/router — fork image
-            org.opencontainers.image.url=https://github.com/kang-heewon/OmniRoute
-            org.opencontainers.image.source=https://github.com/kang-heewon/OmniRoute
+            org.opencontainers.image.url=https://github.com/${{ github.repository }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.licenses=MIT
 
       - name: Build and push
