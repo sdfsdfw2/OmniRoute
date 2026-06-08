@@ -1,10 +1,10 @@
 # ── Common base with runtime deps ──────────────────────────────────────────
-FROM node:24-trixie-slim AS base
+FROM node:24-bookworm-slim AS base
 WORKDIR /app
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=shared \
   --mount=type=cache,target=/var/lib/apt/lists,sharing=shared \
-  apt-get update \
+  for i in 1 2 3; do apt-get update && break || sleep 5; done \
   && apt-get install -y --no-install-recommends libsecret-1-0 ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
@@ -15,7 +15,7 @@ FROM base AS builder
 # apt-get update needed here because base's rm -rf clears the shared cache
 RUN --mount=type=cache,target=/var/cache/apt,sharing=shared \
   --mount=type=cache,target=/var/lib/apt/lists,sharing=shared \
-  apt-get update \
+  for i in 1 2 3; do apt-get update && break || sleep 5; done \
   && apt-get install -y --no-install-recommends python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
 
