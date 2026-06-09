@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useCallback, useEffect, useState } from "react";
-import { Button, Card } from "@/shared/components";
+import { Button, Card, Input } from "@/shared/components";
 import { useNotificationStore } from "@/store/notificationStore";
 import { useTranslations } from "next-intl";
 import AutoDisableCard from "./AutoDisableCard";
@@ -708,6 +708,8 @@ export default function ResilienceTab() {
   const [data, setData] = useState<ResilienceResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingSection, setSavingSection] = useState<string | null>(null);
+  const [customBannedSignals, setCustomBannedSignals] = useState<string[]>([]);
+  const [newBannedKeyword, setNewBannedKeyword] = useState("");
   const tx = useCallback(
     (key: string, fallback: string) => {
       if (typeof t.has === "function" && t.has(key as never)) {
@@ -751,6 +753,35 @@ export default function ResilienceTab() {
       mounted = false;
     };
   }, [notify, tx]);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((s) => { if (mounted) setCustomBannedSignals(s.customBannedSignals || []); })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, []);
+
+  const updateBannedSignals = async (signals: string[]) => {
+    setCustomBannedSignals(signals);
+    await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customBannedSignals: signals }),
+    });
+  };
+
+  const addBannedKeyword = () => {
+    const keyword = newBannedKeyword.trim().toLowerCase();
+    if (!keyword || customBannedSignals.includes(keyword)) return;
+    updateBannedSignals([...customBannedSignals, keyword]);
+    setNewBannedKeyword("");
+  };
+
+  const removeBannedKeyword = (index: number) => {
+    updateBannedSignals(customBannedSignals.filter((_, i) => i !== index));
+  };
 
   const savePatch = async (section: string, payload: Record<string, unknown>) => {
     setSavingSection(section);
@@ -808,6 +839,57 @@ export default function ResilienceTab() {
     <div className="space-y-6">
       <ModelCooldownsCard />
       <AutoDisableCard />
+
+      {/* 自定义封禁关键词 */}
+      <Card>
+        <div className="flex flex-col gap-4">
+          <div>
+            <p className="font-medium">自定义封禁关键词</p>
+            <p className="text-sm text-text-muted">
+              添加自定义关键词，当上游返回的错误消息中包含这些关键词时，自动将连接标记为永久封禁并停用。内置关键词始终生效。
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              placeholder="例如：api key revoked"
+              value={newBannedKeyword}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewBannedKeyword(e.target.value)}
+              onKeyDown={(e: React.KeyboardEvent) => {
+                if (e.key === "Enter") addBannedKeyword();
+              }}
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="add"
+              onClick={addBannedKeyword}
+              disabled={!newBannedKeyword.trim()}
+            >
+              添加
+            </Button>
+          </div>
+          {customBannedSignals.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {customBannedSignals.map((keyword, index) => (
+                <div
+                  key={index}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400"
+                >
+                  {keyword}
+                  <button
+                    onClick={() => removeBannedKeyword(index)}
+                    className="material-symbols-outlined text-xs hover:opacity-70 cursor-pointer"
+                  >
+                    close
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-text-muted">暂无自定义关键词，仅内置关键词生效。</p>
+          )}
+        </div>
+      </Card>
       <Card className="p-6">
         <div className="flex items-start gap-3">
           <span className="material-symbols-outlined text-xl text-primary">info</span>
