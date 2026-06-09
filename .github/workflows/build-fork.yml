@@ -2,7 +2,7 @@ name: Publish Fork Image to GHCR
 
 on:
   push:
-    branches: [my-changes, main]
+    branches: [my-changes]
     tags:
       - "v*"
   workflow_dispatch:
